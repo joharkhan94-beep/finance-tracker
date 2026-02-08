@@ -25,12 +25,12 @@ st.title("💰 Finance Tracker")
 def get_demo_data():
     """Generates fake data for testing"""
     return pd.DataFrame([
-        {"Date": "2026-02-01", "Item": "Software Project", "Cost": 3500.00, "Category": "Income", "Type": "Income"},
-        {"Date": "2026-02-02", "Item": "Grocery Run", "Cost": 45.20, "Category": "Food", "Type": "Expense"},
-        {"Date": "2026-02-03", "Item": "Uber to Client", "Cost": 12.50, "Category": "Transport", "Type": "Expense"},
-        {"Date": "2026-02-04", "Item": "Coffee", "Cost": 3.50, "Category": "Food", "Type": "Expense"},
-        {"Date": "2026-02-05", "Item": "Gym Membership", "Cost": 30.00, "Category": "Health", "Type": "Expense"},
-        {"Date": "2026-02-06", "Item": "Netflix", "Cost": 10.00, "Category": "Entertainment", "Type": "Expense"},
+        {"Date": "2026-02-01", "Item": "Software Project", "Cost": 3500.00, "Category": "Income", "Type": "Income", "User": "Me"},
+        {"Date": "2026-02-02", "Item": "Grocery Run", "Cost": 45.20, "Category": "Food", "Type": "Expense", "User": "Joint"},
+        {"Date": "2026-02-03", "Item": "Uber to Client", "Cost": 12.50, "Category": "Transport", "Type": "Expense", "User": "Me"},
+        {"Date": "2026-02-04", "Item": "Coffee", "Cost": 3.50, "Category": "Food", "Type": "Expense", "User": "Partner"},
+        {"Date": "2026-02-05", "Item": "Gym Membership", "Cost": 30.00, "Category": "Health", "Type": "Expense", "User": "Me"},
+        {"Date": "2026-02-06", "Item": "Netflix", "Cost": 10.00, "Category": "Entertainment", "Type": "Expense", "User": "Joint"},
     ])
 
 # --- DATABASE FUNCTIONS ---
