@@ -265,18 +265,14 @@ with tab1:
             grouped = filtered_df.groupby("Type")['Cost'].sum().reset_index()
             fig_bar = px.bar(grouped, x="Type", y="Cost", color="Type", text_auto='.2s')
             st.plotly_chart(fig_bar, use_container_width=True)
-
-    else:
-        st.info("Add your first transaction in the sidebar to generate data!")
-
-        st.divider() # Draw a line to separate sections
-
-    # --- NEW SECTION: SPENDING TRENDS ---
+ 
+   # --- NEW SECTION: SPENDING TRENDS ---
+    st.divider() # Draw a line to separate sections
     st.subheader("📈 Spending Trend")
-    
+
     # 1. Filter for Expenses only
     expenses_df = filtered_df[filtered_df["Type"] == "Expense"]
-    
+
     # 2. Group by Date to see daily totals
     # (We use a special grouper to make sure every day is shown, even 0 spending days)
     daily_expense = expenses_df.groupby("Date")["Cost"].sum().reset_index()
@@ -284,9 +280,9 @@ with tab1:
     # 3. Create the Line Chart
     if not daily_expense.empty:
         fig_trend = px.line(
-            daily_expense, 
-            x="Date", 
-            y="Cost", 
+            daily_expense,
+            x="Date",
+            y="Cost",
             markers=True,
             title="Daily Spending Over Time"
         )
@@ -296,17 +292,16 @@ with tab1:
 
     # --- NEW SECTION: RECENT TRANSACTIONS ---
     st.subheader("🕒 Recent Transactions")
-    
+
     # Show the last 5 items (sorted by date)
     recent_items = filtered_df.sort_values(by="Date", ascending=False).head(5)
-    
+
     # Display as a clean table (hiding the ugly 'User' column if you want)
     st.dataframe(
-        recent_items[["Date", "Category", "Item", "Cost", "Type"]], 
-        hide_index=True, 
+        recent_items[["Date", "Category", "Item", "Cost", "Type"]],
+        hide_index=True,
         use_container_width=True
     )
-
 with tab2:
     st.header("📝 Manage Data")
     
