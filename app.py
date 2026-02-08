@@ -19,8 +19,8 @@ def get_google_sheet():
         st.error(f"Connection Error: {e}")
         return None
 
-st.set_page_config(page_title="Family Finance Tracker", page_icon="💰", layout="wide")
-st.title("💰 Family Finance Tracker")
+st.set_page_config(page_title="Finance Tracker", page_icon="💰", layout="wide")
+st.title("💰 Finance Tracker")
 
 # --- DATABASE FUNCTIONS ---
 # --- DATABASE FUNCTIONS (Google Sheets Edition) ---
