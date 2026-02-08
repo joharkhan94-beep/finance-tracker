@@ -224,28 +224,32 @@ with tab1:
         
         # 4. SAVINGS GOAL (Restored!)
         st.divider()
-        st.subheader("💸 Monthly Budget")
-    
-    # Logic: Your Income is your limit. How much of it have you spent?
-    if total_income > 0:
-        percent_spent = total_expense / total_income
-        left_to_spend = total_income - total_expense
+        st.subheader("⚖️ Savings vs. Spending Split")
+
+    # 1. Calculate the "Pot" (Total Remaining after bills/expenses)
+    net_balance = total_income - total_expense
+
+    if net_balance > 0:
+        # 2. The Slider (Adjusts the %)
+        savings_rate = st.slider("Target Savings Rate (%)", min_value=0, max_value=100, value=30, format="%d%%")
         
-        # progress bar needs a float between 0.0 and 1.0
-        bar_value = min(percent_spent, 1.0)
+        # 3. The Math (Matches your Excel logic)
+        savings_amount = net_balance * (savings_rate / 100)
+        spending_amount = net_balance - savings_amount
+
+        # 4. The Visuals (Side-by-side columns)
+        c1, c2 = st.columns(2)
         
-        # Color logic: Green if safe, Red if over budget
-        bar_color = "green" if percent_spent < 0.75 else "red"
-        
-        st.progress(bar_value)
-        st.write(f"You have spent **£{total_expense:,.2f}** ({percent_spent:.0%}) of your income.")
-        
-        if left_to_spend > 0:
-            st.success(f"🎉 You have **£{left_to_spend:,.2f}** left to spend this month!")
-        else:
-            st.error(f"⚠️ You are over budget by **£{abs(left_to_spend):,.2f}**")
+        with c1:
+            st.info(f"🏦 **Save / Invest**\n# £{savings_amount:,.2f}")
+        with c2:
+            st.success(f"💸 **Safe to Spend**\n# £{spending_amount:,.2f}")
+
+        # Summary Text
+        st.caption(f"If you save **{savings_rate}%** of your remaining £{net_balance:,.2f}, you have **£{spending_amount:,.2f}** left for guilt-free spending.")
+
     else:
-        st.info("Add some 'Income' transactions to unlock your Budget Bar!")
+        st.warning(f"⚠️ Your balance is negative (-£{abs(net_balance):,.2f}). You need a positive balance to start saving!")
         
         # 5. CHARTS
         st.divider()
