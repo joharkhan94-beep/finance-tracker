@@ -118,6 +118,7 @@ def delete_row(row_index):
 # --- SIDEBAR TOGGLE ---
 with st.sidebar:
     st.header("⚙️ Settings")
+    user = st.sidebar.selectbox("Filter / User", ["All", "Me", "Partner", "Joint"])
     demo_mode = st.toggle("Enable Demo Mode", value=False)
     st.divider()
 
@@ -136,14 +137,15 @@ if st.button("✨ Process with AI"):
                     "Category": data['category'],
                     "Item": data['item'],
                     "Cost": float(data['amount']),
-                    "User": "AI-Added" # We can change this later
+                    "User": "Joint" if user == "All" else user
                 }])
                 
                 # ... inside the AI success block ...
                 
                 if not demo_mode:
                     row_to_add = new_row.iloc[0].values.tolist()
-                    row_to_add[0] = row_to_add[0].strftime('%Y-%m-%d')
+                    # Safe Date Fix: Works for String OR Timestamp
+                    row_to_add[0] = str(row_to_add[0]).split(' ')[0]
                     sheet = get_google_sheet()
                     sheet.append_row(row_to_add)
                     st.success(f"✅ Saved: {data['item']}")
@@ -160,9 +162,8 @@ if st.button("✨ Process with AI"):
 st.divider() # Adds a nice line separator
     
 # --- SIDEBAR: ADD TRANSACTION ---
-st.sidebar.header("➕ Add Transaction")
 with st.sidebar.form("expense_form"):
-    user = st.sidebar.selectbox("Who is this?", ["Me", "Partner", "Joint"])
+    st.sidebar.header("➕ Add Transaction")
     type_ = st.radio("Type", ["Expense", "Income"], horizontal=True)
     new_date = st.date_input("Date")
     new_cat = st.selectbox("Category", ["Food", "Travel", "Bills", "Salary", "Rent", "Entertainment", "Other"])
@@ -210,6 +211,9 @@ with tab1:
         # Apply Filter
         mask = (df['Date'].dt.date >= start_date) & (df['Date'].dt.date <= end_date)
         filtered_df = df[mask]
+
+        if user != "All":
+            filtered_df = filtered_df[filtered_df["User"] == user]
         
         # 3. METRICS
         total_income = filtered_df[filtered_df['Type'] == "Income"]['Cost'].sum()
