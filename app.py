@@ -2,32 +2,78 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import plotly.express as px
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+# --- GOOGLE SHEETS SETUP ---
+SCOPE = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+def get_google_sheet():
+    """Connects to the Google Sheet using secrets."""
+    try:
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gcp_service_account"], SCOPE)
+        client = gspread.authorize(creds)
+        return client.open("Finance Tracker").sheet1
+    except Exception as e:
+        st.error(f"Connection Error: {e}")
+        return None
 
 st.set_page_config(page_title="Family Finance Tracker", page_icon="💰", layout="wide")
 st.title("💰 Family Finance Tracker")
 
 # --- DATABASE FUNCTIONS ---
+# --- DATABASE FUNCTIONS (Google Sheets Edition) ---
+
 def load_data():
-    conn = sqlite3.connect("finance.db")
-    df = pd.read_sql("SELECT * FROM expenses", conn)
-    conn.close()
-    df["date"] = pd.to_datetime(df["date"])
-    return df
+    """Fetches all data from the Google Sheet."""
+    sheet = get_google_sheet()
+    if sheet:
+        # Get all records as a list of dictionaries
+        data = sheet.get_all_records()
+        df = pd.DataFrame(data)
+        
+        # Cleanup types if data exists
+        if not df.empty:
+            # Convert Cost to numbers (handle potential currency symbols)
+            df['Cost'] = pd.to_numeric(df['Cost'].astype(str).str.replace('£', ''), errors='coerce')
+            # Convert Date to proper datetime format
+            df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        return df
+    return pd.DataFrame()
 
 def save_data(date, category, item, cost, type_, user):
-    conn = sqlite3.connect("finance.db")
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO expenses (date, category, item, cost, type, user) VALUES (?, ?, ?, ?, ?, ?)", 
-                   (date, category, item, cost, type_, user))
-    conn.commit()
-    conn.close()
+    """Appends a new row to the Google Sheet."""
+    try:
+        sheet = get_google_sheet()
+        if sheet:
+            # Convert date to string
+            date_str = date.strftime("%Y-%m-%d")
+            
+            # Append row in the EXACT order of your Sheet columns:
+            # Date | Type | Category | Item | Cost | User
+            sheet.append_row([date_str, type_, category, item, float(cost), user])
+            
+            st.success("✅ Saved to Google Sheets!")
+            # Clear cache so the new transaction shows up instantly
+            st.cache_data.clear()
+    except Exception as e:
+        st.error(f"Error saving data: {e}")
 
-def delete_data(row_id):
-    conn = sqlite3.connect("finance.db")
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM expenses WHERE id = ?", (row_id,))
-    conn.commit()
-    conn.close()
+def delete_row(row_index):
+    """Deletes a specific row from Google Sheets."""
+    try:
+        sheet = get_google_sheet()
+        if sheet:
+            # Google Sheets is "1-indexed" (starts at 1)
+            # Row 1 is Headers. So Index 0 in Python = Row 2 in Sheets.
+            sheet_row_number = row_index + 2 
+            
+            sheet.delete_rows(sheet_row_number)
+            
+            st.toast("🗑️ Transaction Deleted!", icon="✅")
+            st.cache_data.clear() # Force reload so the row disappears
+    except Exception as e:
+        st.error(f"Could not delete: {e}")
 
 # --- SIDEBAR: ADD TRANSACTION ---
 st.sidebar.header("➕ Add Transaction")
@@ -49,96 +95,99 @@ tab1, tab2 = st.tabs(["📊 Dashboard", "📝 Manage Data"])
 
 with tab1:
     # --- DASHBOARD LOGIC ---
-    try:
-        df = load_data()
-
-        # --- FILTERS (Sidebar) ---
-        st.sidebar.divider()
-        st.sidebar.header("🔍 Dashboard Filters")
-        selected_users = st.sidebar.multiselect("Select Users:", options=df["user"].unique(), default=df["user"].unique())
-        start_date = st.sidebar.date_input("Start Date", value=pd.to_datetime("2026-02-01"))
-        end_date = st.sidebar.date_input("End Date", value=pd.to_datetime("today"))
-
-        # Apply Filters
-        mask = (df["date"].dt.date >= start_date) & \
-               (df["date"].dt.date <= end_date) & \
-               (df["user"].isin(selected_users))
+    df = load_data()
+    
+    if not df.empty:
+        # 1. CLEAN DATA (Crucial for Google Sheets!)
+        # Convert 'Cost' to numbers (remove £ symbols if any)
+        df['Cost'] = pd.to_numeric(df['Cost'].astype(str).str.replace('£', ''), errors='coerce')
+        # Convert 'Date' to datetime objects
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        
+        # 2. DATE FILTER
+        st.write("### 🗓️ Filter")
+        col_date1, col_date2 = st.columns(2)
+        start_date = col_date1.date_input("Start Date", value=pd.to_datetime("2024-01-01"))
+        end_date = col_date2.date_input("End Date", value=pd.to_datetime("today"))
+        
+        # Apply Filter
+        mask = (df['Date'].dt.date >= start_date) & (df['Date'].dt.date <= end_date)
         filtered_df = df[mask]
-
-        # --- METRICS ---
-        total_income = filtered_df[filtered_df["type"] == "Income"]["cost"].sum()
-        total_expense = filtered_df[filtered_df["type"] == "Expense"]["cost"].sum()
+        
+        # 3. METRICS
+        total_income = filtered_df[filtered_df['Type'] == "Income"]['Cost'].sum()
+        total_expense = filtered_df[filtered_df['Type'] == "Expense"]['Cost'].sum()
         balance = total_income - total_expense
-
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Income", f"£{total_income:,.2f}", delta="In")
-        col2.metric("Expense", f"£{total_expense:,.2f}", delta="-Out")
-        col3.metric("Net Balance", f"£{balance:,.2f}", delta="Remaining")
-
-        # --- SAVINGS GOALS (RESTORED!) ---
+        
         st.divider()
-        st.subheader("🎯 Savings Goals")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Total Income", f"£{total_income:,.2f}")
+        m2.metric("Total Expense", f"£{total_expense:,.2f}")
+        m3.metric("Net Balance", f"£{balance:,.2f}")
         
-        # Slider (Default 33%)
-        savings_rate = st.slider("Target Savings Rate (%)", 0, 100, 33)
-        
-        # The Math
-        if balance > 0:
-            savings_amount = balance * (savings_rate / 100)
-            spending_money = balance - savings_amount
-        else:
-            savings_amount = 0
-            spending_money = 0
-
-        st.caption(f"If you save {savings_rate}%, here is your split:")
-        c_save, c_spend = st.columns(2)
-        c_save.metric("🏦 To Save/Invest", f"£{savings_amount:,.2f}", delta="Target")
-        c_spend.metric("💸 Safe to Spend", f"£{spending_money:,.2f}", delta="Allowance")
-
+        # 4. SAVINGS GOAL (Restored!)
         st.divider()
-
-        # --- ADVANCED VISUALS (PLOTLY) ---
-        expenses_only = filtered_df[filtered_df["type"] == "Expense"]
+        st.subheader("🎯 Savings Goal")
         
-        if not expenses_only.empty:
-            c1, c2 = st.columns(2)
-            with c1:
-                st.subheader("Spending by Category")
-                fig_pie = px.pie(expenses_only, values='cost', names='category', hole=0.4)
+        # Slider for goal setting
+        goal_target = st.slider("Set your Goal (£)", min_value=1000, max_value=50000, value=5000, step=500)
+        
+        # Calculate Progress
+        if goal_target > 0:
+            progress = min(max(balance / goal_target, 0.0), 1.0)
+            st.progress(progress)
+            st.write(f"You have saved **£{balance:,.2f}** of your **£{goal_target:,.0f}** goal!")
+        
+        # 5. CHARTS
+        st.divider()
+        c1, c2 = st.columns(2)
+        
+        with c1:
+            st.subheader("Expenses by Category")
+            expenses_only = filtered_df[filtered_df['Type'] == "Expense"]
+            if not expenses_only.empty:
+                fig_pie = px.pie(expenses_only, values='Cost', names='Category', hole=0.4)
                 st.plotly_chart(fig_pie, use_container_width=True)
+            else:
+                st.info("No expenses in this period.")
 
-            with c2:
-                st.subheader("Daily Spending Trend")
-                daily_spend = expenses_only.groupby("date")["cost"].sum().reset_index()
-                fig_line = px.bar(daily_spend, x='date', y='cost')
-                st.plotly_chart(fig_line, use_container_width=True)
-        else:
-            st.info("No expenses found for this selection.")
+        with c2:
+            st.subheader("Income vs Expense")
+            grouped = filtered_df.groupby("Type")['Cost'].sum().reset_index()
+            fig_bar = px.bar(grouped, x="Type", y="Cost", color="Type", text_auto='.2s')
+            st.plotly_chart(fig_bar, use_container_width=True)
 
-    except Exception as e:
-        st.info("👋 Welcome! Add your first transaction in the sidebar.")
+    else:
+        st.info("Add your first transaction in the sidebar to generate data!")
 
 with tab2:
-    # --- MANAGE DATA LOGIC ---
-    st.header("📝 Recent Transactions")
-    try:
-        full_df = load_data()
-        st.dataframe(full_df.sort_values(by="id", ascending=False), use_container_width=True)
-
-        st.divider()
-        st.subheader("🗑️ Delete a Mistake")
+    st.header("📝 Manage Data")
+    
+    # 1. Show the Data
+    st.dataframe(df, use_container_width=True)
+    
+    # 2. Delete Section
+    st.divider()
+    st.subheader("🗑️ Delete a Transaction")
+    
+    if not df.empty:
+        # Create a list of options that look like: "Index: 0 | 2024-02-08 | Coffee | £3.50"
+        # We need the 'Index' to know which row to delete in Google Sheets
+        delete_options = [
+            f"Row {i+1}: {row['Date'].date()} - {row['Category']} - £{row['Cost']} ({row['User']})" 
+            for i, row in df.iterrows()
+        ]
         
-        if not full_df.empty:
-            options = full_df.apply(lambda x: f"ID: {x['id']} | {x['user']} | {x['item']} | £{x['cost']}", axis=1)
-            selected_option = st.selectbox("Select transaction to delete:", options)
+        # User selects an item to delete
+        selected_option = st.selectbox("Select Transaction to Remove", delete_options)
+        
+        # Find the index (number) of the selected item
+        if st.button("Delete Selected Transaction", type="primary"):
+            # Extract the index from the list selection
+            index_to_delete = delete_options.index(selected_option)
             
-            if st.button("Delete Transaction"):
-                row_id = int(selected_option.split("|")[0].replace("ID:", "").strip())
-                delete_data(row_id)
-                st.success("Deleted! Refreshing...")
-                st.experimental_rerun()
-        else:
-            st.write("No data to delete.")
-            
-    except Exception as e:
-        st.write("No data available yet.")
+            # Call the delete function
+            delete_row(index_to_delete)
+            st.rerun() # Refresh the app immediately
+    else:
+        st.info("No transactions to delete.")
