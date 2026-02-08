@@ -1,6 +1,7 @@
 import streamlit as st
+import google.generativeai as genai
+import json
 import pandas as pd
-import sqlite3
 import plotly.express as px
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -41,6 +42,34 @@ def load_data():
         return df
     return pd.DataFrame()
 
+def ai_parse(text):
+    """Sends text to Gemini and gets structured data back."""
+    try:
+        # 1. Setup the Brain
+        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+        model = genai.GenerativeModel('gemini-2.5-flash') # Fast & Smart
+
+        # 2. The Prompt (Instructions)
+        prompt = f"""
+        You are a financial assistant. Extract transaction details from: "{text}".
+        Return ONLY a JSON object with these keys:
+        - "item": short description (string)
+        - "amount": number (positive)
+        - "category": choose strictly from [Food, Transport, Bills, Shopping, Entertainment, Health, Income]
+        - "type": "Income" or "Expense"
+        - "date": YYYY-MM-DD (assume today is {pd.Timestamp.now().strftime('%Y-%m-%d')} if not specified)
+        """
+        
+        # 3. Get Response
+        response = model.generate_content(prompt)
+        
+        # 4. Clean & Return Data
+        cleaned_text = response.text.replace('```json', '').replace('```', '').strip()
+        return json.loads(cleaned_text)
+        
+    except Exception as e:
+        return {"error": str(e)}
+
 def save_data(date, category, item, cost, type_, user):
     """Appends a new row to the Google Sheet."""
     try:
@@ -75,6 +104,36 @@ def delete_row(row_index):
     except Exception as e:
         st.error(f"Could not delete: {e}")
 
+st.header("🤖 AI Assistant")
+ai_input = st.text_input("Tell me what you spent:", placeholder="e.g., £15 on Nando's")
+    
+if st.button("✨ Process with AI"):
+        with st.spinner("Thinking..."):
+            data = ai_parse(ai_input)
+            
+            if "error" not in data:
+                # Auto-fill the form logic would go here, but for now let's just save it!
+                new_row = pd.DataFrame([{
+                    "Date": data['date'],
+                    "Type": data['type'],
+                    "Category": data['category'],
+                    "Item": data['item'],
+                    "Cost": float(data['amount']),
+                    "User": "AI-Added" # We can change this later
+                }])
+                
+                # Add to Google Sheets
+                sheet = get_google_sheet()
+                sheet.append_row(new_row.iloc[0].tolist())
+                
+                st.success(f"✅ Saved: {data['item']} (£{data['amount']})")
+                st.cache_data.clear() # Refresh data
+                st.rerun()
+            else:
+                st.error(f"Error details: {data['error']}")
+    
+st.divider() # Adds a nice line separator
+    
 # --- SIDEBAR: ADD TRANSACTION ---
 st.sidebar.header("➕ Add Transaction")
 with st.sidebar.form("expense_form"):
