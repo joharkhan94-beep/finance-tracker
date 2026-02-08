@@ -22,6 +22,17 @@ def get_google_sheet():
 st.set_page_config(page_title="Finance Tracker", page_icon="💰", layout="wide")
 st.title("💰 Finance Tracker")
 
+def get_demo_data():
+    """Generates fake data for testing"""
+    return pd.DataFrame([
+        {"Date": "2026-02-01", "Item": "Software Project", "Cost": 3500.00, "Category": "Income", "Type": "Income"},
+        {"Date": "2026-02-02", "Item": "Grocery Run", "Cost": 45.20, "Category": "Food", "Type": "Expense"},
+        {"Date": "2026-02-03", "Item": "Uber to Client", "Cost": 12.50, "Category": "Transport", "Type": "Expense"},
+        {"Date": "2026-02-04", "Item": "Coffee", "Cost": 3.50, "Category": "Food", "Type": "Expense"},
+        {"Date": "2026-02-05", "Item": "Gym Membership", "Cost": 30.00, "Category": "Health", "Type": "Expense"},
+        {"Date": "2026-02-06", "Item": "Netflix", "Cost": 10.00, "Category": "Entertainment", "Type": "Expense"},
+    ])
+
 # --- DATABASE FUNCTIONS ---
 # --- DATABASE FUNCTIONS (Google Sheets Edition) ---
 
@@ -104,6 +115,12 @@ def delete_row(row_index):
     except Exception as e:
         st.error(f"Could not delete: {e}")
 
+# --- SIDEBAR TOGGLE ---
+with st.sidebar:
+    st.header("⚙️ Settings")
+    demo_mode = st.toggle("Enable Demo Mode", value=False)
+    st.divider()
+
 st.header("🤖 AI Assistant")
 ai_input = st.text_input("Tell me what you spent:", placeholder="e.g., £15 on Nando's")
     
@@ -122,13 +139,21 @@ if st.button("✨ Process with AI"):
                     "User": "AI-Added" # We can change this later
                 }])
                 
-                # Add to Google Sheets
-                sheet = get_google_sheet()
-                sheet.append_row(new_row.iloc[0].tolist())
+                # ... inside the AI success block ...
                 
-                st.success(f"✅ Saved: {data['item']} (£{data['amount']})")
-                st.cache_data.clear() # Refresh data
-                st.rerun()
+                if not demo_mode:
+                    row_to_add = new_row.iloc[0].values.tolist()
+                    row_to_add[0] = row_to_add[0].strftime('%Y-%m-%d')
+                    sheet = get_google_sheet()
+                    sheet.append_row(row_to_add)
+                    st.success(f"✅ Saved: {data['item']}")
+                    st.cache_data.clear()
+                    st.rerun()
+                else:
+                    # FAKE SAVE (For Demo)
+                    st.balloons()
+                    st.success(f"🎉 [DEMO] Simulation: Would have saved '{data['item']}' for £{data['amount']}")
+
             else:
                 st.error(f"Error details: {data['error']}")
     
@@ -152,9 +177,22 @@ with st.sidebar.form("expense_form"):
 # --- TABS LAYOUT ---
 tab1, tab2 = st.tabs(["📊 Dashboard", "📝 Manage Data"])
 
+# --- DATA LOADING ---
+if demo_mode:
+    st.warning("⚠️ You are in DEMO MODE. Data is fake and not saved.")
+    df = get_demo_data()
+    # Ensure date column is datetime format
+    df["Date"] = pd.to_datetime(df["Date"])
+else:
+    # Load Real Data
+    try:
+        df = load_data()
+    except:
+        st.error("Could not load real data.")
+        st.stop()
+
 with tab1:
     # --- DASHBOARD LOGIC ---
-    df = load_data()
     
     if not df.empty:
         # 1. CLEAN DATA (Crucial for Google Sheets!)
