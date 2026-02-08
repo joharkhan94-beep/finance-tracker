@@ -224,16 +224,28 @@ with tab1:
         
         # 4. SAVINGS GOAL (Restored!)
         st.divider()
-        st.subheader("🎯 Savings Goal")
+        st.subheader("💸 Monthly Budget")
+    
+    # Logic: Your Income is your limit. How much of it have you spent?
+    if total_income > 0:
+        percent_spent = total_expense / total_income
+        left_to_spend = total_income - total_expense
         
-        # Slider for goal setting
-        goal_target = st.slider("Set your Goal (£)", min_value=1000, max_value=50000, value=5000, step=500)
+        # progress bar needs a float between 0.0 and 1.0
+        bar_value = min(percent_spent, 1.0)
         
-        # Calculate Progress
-        if goal_target > 0:
-            progress = min(max(balance / goal_target, 0.0), 1.0)
-            st.progress(progress)
-            st.write(f"You have saved **£{balance:,.2f}** of your **£{goal_target:,.0f}** goal!")
+        # Color logic: Green if safe, Red if over budget
+        bar_color = "green" if percent_spent < 0.75 else "red"
+        
+        st.progress(bar_value)
+        st.write(f"You have spent **£{total_expense:,.2f}** ({percent_spent:.0%}) of your income.")
+        
+        if left_to_spend > 0:
+            st.success(f"🎉 You have **£{left_to_spend:,.2f}** left to spend this month!")
+        else:
+            st.error(f"⚠️ You are over budget by **£{abs(left_to_spend):,.2f}**")
+    else:
+        st.info("Add some 'Income' transactions to unlock your Budget Bar!")
         
         # 5. CHARTS
         st.divider()
