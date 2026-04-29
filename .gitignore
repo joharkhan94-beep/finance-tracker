@@ -6,3 +6,4 @@ __pycache__/
 my_tracker.csv
 app_local.py
 .DS_Store
+.env
