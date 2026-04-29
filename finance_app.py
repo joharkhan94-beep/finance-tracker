@@ -316,20 +316,17 @@ def ai_parse(text):
 
 def generate_insights(summary_text):
     """Calls Gemini with a spending summary and returns 3 plain-English insights."""
-    try:
-        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        prompt = (
-            "You are a personal finance assistant. Given this spending summary, "
-            "provide 3 concise, specific insights in plain English. Each insight should "
-            "be one sentence. Focus on patterns, anomalies, or actionable observations. "
-            "Do not use bullet points — number them 1, 2, 3. Be direct and specific "
-            f"with numbers from the data.\n\n{summary_text}"
-        )
-        response = model.generate_content(prompt)
-        return response.text.strip()
-    except Exception as e:
-        return f"Error generating insights: {e}"
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+    model = genai.GenerativeModel('gemini-2.5-flash')
+    prompt = (
+        "You are a personal finance assistant. Given this spending summary, "
+        "provide 3 concise, specific insights in plain English. Each insight should "
+        "be one sentence. Focus on patterns, anomalies, or actionable observations. "
+        "Do not use bullet points — number them 1, 2, 3. Be direct and specific "
+        f"with numbers from the data.\n\n{summary_text}"
+    )
+    response = model.generate_content(prompt)
+    return response.text.strip()
 
 def save_data(date, category, item, cost, type_, user):
     """Inserts a new transaction into Supabase."""
@@ -566,7 +563,12 @@ with tab1:
                     f"Top 3 spending categories: {_top_cats_str}."
                 )
                 with st.spinner("Generating insights..."):
-                    st.session_state["ai_insights"] = generate_insights(_summary)
+                    try:
+                        insight_text = generate_insights(_summary)
+                        st.session_state["ai_insights"] = insight_text
+                    except Exception as e:
+                        st.error(f"Gemini error: {type(e).__name__}: {str(e)}")
+                        st.stop()
 
             if "ai_insights" in st.session_state:
                 st.markdown(
