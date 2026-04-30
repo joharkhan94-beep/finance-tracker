@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 import json
 import pandas as pd
 import plotly.express as px
@@ -12,6 +12,10 @@ def get_supabase():
     return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
 st.set_page_config(page_title="FinanceAI", page_icon="◈", layout="wide")
+
+# --- GEMINI SETUP ---
+
+gemini_client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # --- VISUAL HELPERS ---
 
@@ -297,8 +301,6 @@ def load_data():
 def ai_parse(text):
     """Sends text to Gemini and gets structured data back."""
     try:
-        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        model = genai.GenerativeModel('gemini-2.5-flash')
         prompt = f"""
         You are a financial assistant. Extract transaction details from: "{text}".
         Return ONLY a JSON object with these keys:
@@ -308,7 +310,10 @@ def ai_parse(text):
         - "type": "Income" or "Expense"
         - "date": YYYY-MM-DD (assume today is {pd.Timestamp.now().strftime('%Y-%m-%d')} if not specified)
         """
-        response = model.generate_content(prompt)
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
         cleaned_text = response.text.replace('```json', '').replace('```', '').strip()
         return json.loads(cleaned_text)
     except Exception as e:
@@ -316,8 +321,6 @@ def ai_parse(text):
 
 def generate_insights(summary_text):
     """Calls Gemini with a spending summary and returns 3 plain-English insights."""
-    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    model = genai.GenerativeModel('gemini-2.5-flash')
     prompt = (
         "You are a personal finance assistant. Given this spending summary, "
         "provide 3 concise, specific insights in plain English. Each insight should "
@@ -325,7 +328,10 @@ def generate_insights(summary_text):
         "Do not use bullet points — number them 1, 2, 3. Be direct and specific "
         f"with numbers from the data.\n\n{summary_text}"
     )
-    response = model.generate_content(prompt)
+    response = gemini_client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt
+    )
     return response.text.strip()
 
 def save_data(date, category, item, cost, type_, user):
