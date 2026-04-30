@@ -6,7 +6,7 @@
 
 ## 🎯 Goal
 
-Turn this **Supabase-backed** AI finance tracker into a polished **portfolio piece** for AI engineering / FinTech job applications. Then deploy publicly. Then do the same for the EdTech tool.
+Turn this **Supabase-backed** AI finance tracker into a polished **portfolio piece** for AI engineering / FinTech job applications. Deployed publicly ✅. Then do the same for the EdTech tool.
 
 ---
 
@@ -24,7 +24,7 @@ Turn this **Supabase-backed** AI finance tracker into a polished **portfolio pie
 
 ---
 
-## 🐛 Bugs — All Phase 1 bugs resolved
+## 🐛 Bugs — All resolved
 
 | # | Bug | Status |
 |---|-----|--------|
@@ -58,24 +58,19 @@ Turn this **Supabase-backed** AI finance tracker into a polished **portfolio pie
 
 ## 🚢 Deployment Readiness
 
-**Status: READY TO DEPLOY — Phase 3 in progress**
+**Status: DEPLOYED ✅**
 
 ### Resolved blockers
 - ✅ Credentials rotated, `.streamlit/secrets.toml` in `.gitignore`, Supabase URL/key set in Streamlit Cloud Secrets UI
-- ✅ Entry point: `finance_app.py` set as main file in Streamlit Cloud deploy settings
-- ✅ `requirements.txt` pinned with minimum versions; Google Sheets deps (`gspread`, `oauth2client`) removed; `supabase>=2.0` added
+- ✅ Entry point: `app.py` imports and calls `main()` from `finance_app.py` — all UI rendering inside `main()` so it re-runs on every Streamlit interaction
+- ✅ `requirements.txt` pinned to exact versions; Google Sheets deps removed; `supabase>=2.0` and `google-genai>=1.0.0` added
 - ✅ `finance.db` and `app_local.py` added to `.gitignore`
 - ✅ All Phase 2 features complete and syntax-verified
-
-### Phase 3 checklist
-1. Push latest code (`git push origin main`)
-2. Confirm Streamlit Cloud page loads (was blank — root cause was unpushed Supabase migration)
-3. Smoke-test: demo mode → real data → AI entry → confirm → save → appears in table
-4. Make repo public (confirm no secrets remain in git history)
-5. Add live URL to CV / LinkedIn / portfolio
+- ✅ Migrated from deprecated `google-generativeai` to `google-genai` SDK
+- ✅ `.python-version` fixed from invalid `3.14` to `3.11`
+- ✅ `streamlit` pinned to `==1.41.1` to prevent silent breaking upgrades on Cloud
 
 ### Non-blockers worth noting
-- `.python-version` specifies 3.9; Streamlit Cloud supports it but 3.11+ is recommended for performance
 - `_lessons/` directory is committed — fine for portfolio repo, adds context
 
 ---
@@ -107,15 +102,18 @@ When starting a new session, read this file first, then tackle the next unchecke
 - [ ] Budget alerts — explicitly skipped
 - [ ] **Receipt / photo upload** — deferred
 
-### Phase 3 — Deploy ⬅️ CURRENT
+### Phase 3 — Deploy ✅ COMPLETE
 - [x] Set Streamlit Cloud secrets (Supabase URL + key, Gemini API key)
-- [ ] Push latest code → confirm blank page resolves
-- [ ] Smoke-test with empty DB, then with real data
-- [ ] Make repo public (after confirming no secrets remain)
+- [x] Push latest code — blank screen resolved
+- [x] Smoke-test with empty DB, then with real data
+- [x] Make repo public (after confirming no secrets remain)
 
 ### Phase 4 — EdTech Tool
 - [x] Finance app now uses Supabase — consistent with EdTech backend
-- [ ] (Add EdTech project details here when ready)
+- [x] App working locally ✅
+- [x] Deployed on Streamlit Cloud ✅
+- [x] README done ✅
+- [ ] Repo public — pending
 
 ---
 
@@ -123,11 +121,11 @@ When starting a new session, read this file first, then tackle the next unchecke
 
 | File | Purpose |
 |------|---------|
-| `finance_app.py` | Main Streamlit app — Supabase backend, Gemini AI, full feature set |
-| `app.py` | Entry point shim that imports `finance_app` (Streamlit Cloud compatibility) |
+| `finance_app.py` | Main Streamlit app — all UI inside `main()`, Supabase backend, Gemini AI, full feature set |
+| `app.py` | Entry point — imports and calls `main()` from `finance_app` on every Streamlit rerun |
 | `supabase/migrations/` | DB migration files for Supabase schema |
 | `.streamlit/secrets.toml` | 🔴 Local secrets only — `.gitignore`d, NEVER push |
-| `requirements.txt` | Pinned dependencies (`streamlit`, `supabase`, `google-generativeai`, etc.) |
+| `requirements.txt` | Pinned dependencies (`streamlit==1.41.1`, `supabase`, `google-genai`, etc.) |
 | `_lessons/` | Learning exercises — kept for portfolio context |
 | `app_local.py` | Old SQLite local version — `.gitignore`d, not for deployment |
 | `finance_app_v1.py` | Old Google Sheets version — ignore |
@@ -144,4 +142,15 @@ When starting a new session, read this file first, then tackle the next unchecke
 
 ---
 
-*Last updated: 2026-04-29 — Phase 2 complete (all features shipped); Phase 3 deploy in progress*
+## 🔑 Key Lessons Learned
+
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| Blank screen on any interaction | `from finance_app import *` causes Python module caching — UI code only runs on first load | Move all UI into `main()`, import and call `main()` from `app.py` |
+| Deployed app crashing silently | `google.generativeai` SDK fully deprecated on Streamlit Cloud | Migrate to `google-genai` SDK |
+| App restarting mid-session | Streamlit Cloud redeploys on every git push | Stop pushing during live testing |
+| Streamlit version mismatch | Loose version pin allowed Cloud to upgrade to breaking version | Pin `streamlit==1.41.1` in `requirements.txt` |
+
+---
+
+*Last updated: 2026-04-30 — Phase 3 complete, app deployed and live*
