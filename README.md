@@ -133,8 +133,10 @@ To populate the app with realistic dummy data for a live demo, add a few transac
 
 ## Screenshots
 
-<!-- Dashboard — metric cards, savings split, spending trends -->
-<!-- Manage Data tab — transaction table and filters -->
+![AI Assistant](assets/Screenshot_Assisstant.png)
+![Dashboard](assets/Screenshot_dashboard.png)
+![Manage Data](assets/Screenshot_managedata.png)
+![Side Menu](assets/Screenshot_sidemenu.png)
 
 ---
 
