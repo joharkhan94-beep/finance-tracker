@@ -79,26 +79,6 @@ def inject_custom_css():
             background-color: transparent !important;
         }
 
-        .stButton > button {
-            background-color: #f59e0b !important;
-            color: #0a0e1a !important;
-            font-weight: 600 !important;
-            border: none !important;
-            border-radius: 8px !important;
-        }
-        .stButton > button:hover {
-            background-color: #d97706 !important;
-            color: #0a0e1a !important;
-        }
-
-        .stButton > button[kind="secondary"] {
-            background-color: #1e2d4a !important;
-            color: #f9fafb !important;
-        }
-        .stButton > button[kind="secondary"]:hover {
-            background-color: #263d5e !important;
-        }
-
         .stTextInput > div > div > input,
         .stNumberInput > div > div > input,
         .stDateInput > div > div > input {
@@ -183,18 +163,6 @@ def inject_custom_css():
             color: #f9fafb !important;
         }
 
-        /* Delete buttons — 7th column of the Manage Data rows */
-        [data-testid="stHorizontalBlock"] [data-testid="column"]:nth-child(7) .stButton > button {
-            background-color: transparent !important;
-            color: #6b7280 !important;
-            border: 1px solid #374151 !important;
-            border-radius: 6px !important;
-        }
-        [data-testid="stHorizontalBlock"] [data-testid="column"]:nth-child(7) .stButton > button:hover {
-            background-color: #450a0a !important;
-            border-color: #ef4444 !important;
-            color: #ef4444 !important;
-        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -352,39 +320,41 @@ def delete_transaction(row_id):
 
 def main():
     st.set_page_config(page_title="FinanceAI", page_icon="◈", layout="wide")
-    inject_custom_css()
 
-    # Button visibility overrides — injected after inject_custom_css() so these
-    # rules win on conflict (last CSS wins when both use !important).
+    # Global button styling — injected first so it applies before any widget renders.
+    # Targets all Streamlit button types: regular, primary, secondary, and form submit.
     st.markdown(
         """
         <style>
-        /* ── Sidebar form submit ("Save Transaction") ─────────────────────────
-           stFormSubmitButton is a separate container from stButton, so it
-           misses the global gold rule and renders white-on-white. */
-        .stFormSubmitButton > button,
-        [data-testid="stFormSubmitButton"] > button {
+        button[kind="primary"],
+        button[kind="secondary"],
+        div.stButton > button,
+        div.stFormSubmitButton > button,
+        div.stDownloadButton > button,
+        [data-testid="stDownloadButton"] > button,
+        [data-testid="stBaseButton-secondary"],
+        [data-testid="stBaseButton-primary"] {
             background-color: #0d1b2a !important;
             color: #f0b429 !important;
             border: 1px solid #f0b429 !important;
             border-radius: 8px !important;
             font-weight: 600 !important;
         }
-        .stFormSubmitButton > button:hover,
-        [data-testid="stFormSubmitButton"] > button:hover {
-            background-color: #1a2d45 !important;
-            color: #f0b429 !important;
-            border-color: #f0b429 !important;
+        div.stButton > button:hover,
+        div.stFormSubmitButton > button:hover,
+        div.stDownloadButton > button:hover,
+        [data-testid="stDownloadButton"] > button:hover {
+            background-color: #f0b429 !important;
+            color: #0d1b2a !important;
         }
 
-        /* ── Delete buttons — 7th column of Manage Data rows ──────────────── */
-        [data-testid="stHorizontalBlock"] [data-testid="column"]:nth-child(7) .stButton > button {
+        /* Delete buttons — 7th column of the Manage Data rows */
+        [data-testid="stHorizontalBlock"] [data-testid="column"]:nth-child(7) div.stButton > button {
             background-color: #8B0000 !important;
             color: #ffffff !important;
             border: none !important;
-            border-radius: 6px !important;
         }
-        [data-testid="stHorizontalBlock"] [data-testid="column"]:nth-child(7) .stButton > button:hover {
+        [data-testid="stHorizontalBlock"] [data-testid="column"]:nth-child(7) div.stButton > button:hover {
             background-color: #a31515 !important;
             color: #ffffff !important;
         }
@@ -392,6 +362,8 @@ def main():
         """,
         unsafe_allow_html=True,
     )
+
+    inject_custom_css()
 
     # --- SIDEBAR ---
     with st.sidebar:
